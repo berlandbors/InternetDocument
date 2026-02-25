@@ -2,34 +2,117 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>📚 Архив: Книги и Изображения</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 Universal Search Hub</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>📚 Архив Internet Archive</h1>
-  <select id="mode">
-    <option value="texts">Книги и документы</option>
-    <option value="image">Изображения и фото</option>
-  </select>
-  <input id="query" placeholder="Введите тему, жанр или ключевое слово">
-  <button onclick="search()">🔍 Искать</button>
+  <header class="header">
+    <div class="header-inner">
+      <h1 class="header-title">🔍 Universal Search Hub</h1>
+      <button id="theme-toggle" class="btn btn-icon" title="Переключить тему">🌓</button>
+    </div>
+  </header>
 
-  <div id="results"></div>
+  <main class="main-layout">
+    <aside id="sidebar" class="sidebar">
+      <section class="sidebar-section">
+        <h3 class="sidebar-heading">🕐 История поиска</h3>
+        <ul id="history-list" class="sidebar-list"></ul>
+      </section>
+      <section class="sidebar-section">
+        <h3 class="sidebar-heading">⭐ Избранное</h3>
+        <ul id="favorites-list" class="sidebar-list"></ul>
+      </section>
+    </aside>
 
-  <div id="modal">
-    <div id="modal-content">
-      <img id="modal-img" src="" alt="">
-      <iframe id="modal-frame" style="display:none"></iframe>
-      <div id="gallery-counter"></div>
-      <div>
-        <button onclick="prevImage()">⏮</button>
-        <button onclick="nextImage()">⏭</button>
-        <button onclick="closeModal()">❌ Закрыть</button>
-        <button onclick="shareItem()">🔗 Поделиться</button>
+    <div class="content-area">
+      <section class="search-section">
+        <div class="search-bar">
+          <input id="query" type="text" class="search-input" placeholder="Введите поисковый запрос...">
+          <button id="search-btn" class="btn btn-primary">🔍 Искать</button>
+        </div>
+
+        <div class="search-options">
+          <div class="sources-group">
+            <span class="options-label">Источники:</span>
+            <label class="checkbox-label"><input type="checkbox" name="source" value="archive" checked> Archive</label>
+            <label class="checkbox-label"><input type="checkbox" name="source" value="wikipedia" checked> Wikipedia</label>
+            <label class="checkbox-label"><input type="checkbox" name="source" value="unsplash" checked> Unsplash</label>
+            <label class="checkbox-label"><input type="checkbox" name="source" value="openlibrary" checked> OpenLibrary</label>
+            <label class="checkbox-label"><input type="checkbox" name="source" value="wikimedia" checked> Wikimedia</label>
+          </div>
+
+          <div class="filters-group">
+            <label class="filter-label">
+              Тип:
+              <select id="content-type" class="select">
+                <option value="all">Все</option>
+                <option value="texts">Тексты</option>
+                <option value="image">Изображения</option>
+                <option value="audio">Аудио</option>
+                <option value="video">Видео</option>
+                <option value="article">Статьи</option>
+              </select>
+            </label>
+            <label class="filter-label">
+              Сортировка:
+              <select id="sort" class="select">
+                <option value="relevance">По релевантности</option>
+                <option value="date">По дате</option>
+                <option value="popular">По популярности</option>
+              </select>
+            </label>
+            <label class="filter-label">
+              Язык:
+              <select id="lang" class="select">
+                <option value="en">English</option>
+                <option value="ru">Русский</option>
+                <option value="de">Deutsch</option>
+              </select>
+            </label>
+            <label class="filter-label">
+              С:
+              <input type="date" id="date-from" class="input-date">
+            </label>
+            <label class="filter-label">
+              По:
+              <input type="date" id="date-to" class="input-date">
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <div id="tabs" class="tabs" style="display:none"></div>
+
+      <div id="error-msg" class="error-msg" style="display:none"></div>
+
+      <div id="results" class="results-grid"></div>
+
+      <div class="load-more-wrap">
+        <button id="load-more" class="btn btn-secondary" style="display:none">Загрузить ещё</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="modal" class="modal" style="display:none">
+    <div class="modal-overlay" id="modal-overlay"></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 id="modal-title" class="modal-title"></h2>
+        <button id="modal-close" class="btn btn-icon modal-close">✕</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+      <p id="modal-description" class="modal-description"></p>
+      <div class="modal-footer">
+        <button id="btn-share" class="btn btn-secondary">🔗 Поделиться</button>
+        <button id="btn-download" class="btn btn-secondary">💾 Скачать</button>
+        <button id="btn-open-source" class="btn btn-secondary">🌐 Открыть источник</button>
+        <button id="btn-favorite" class="btn btn-accent">⭐ В избранное</button>
       </div>
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
