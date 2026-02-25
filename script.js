@@ -22,6 +22,8 @@ let activeTab = 'all';
 // --- DOM refs ---
 const queryInput = document.getElementById('query');
 const searchBtn = document.getElementById('search-btn');
+const clearBtn = document.getElementById('clear-btn');
+const historyBtn = document.getElementById('history-btn');
 const resultsDiv = document.getElementById('results');
 const tabsDiv = document.getElementById('tabs');
 const loadMoreBtn = document.getElementById('load-more');
@@ -38,20 +40,104 @@ const btnFavorite = document.getElementById('btn-favorite');
 const historyList = document.getElementById('history-list');
 const favoritesList = document.getElementById('favorites-list');
 const errorMsg = document.getElementById('error-msg');
-const themeToggle = document.getElementById('theme-toggle');
+const themeSelector = document.getElementById('themeSelector');
+const sidebar = document.getElementById('sidebar');
 
-// --- Theme ---
+// --- Theme (terminal: green / amber / blue) ---
 function applyTheme() {
-  const theme = localStorage.getItem('theme') || 'dark';
-  document.body.classList.toggle('light-theme', theme === 'light');
-  themeToggle.textContent = theme === 'light' ? '🌙' : '🌓';
+  const theme = localStorage.getItem('terminal-theme') || 'green';
+  document.documentElement.setAttribute('data-theme', theme);
+  if (themeSelector) themeSelector.value = theme;
 }
-themeToggle.addEventListener('click', () => {
-  const current = localStorage.getItem('theme') || 'dark';
-  localStorage.setItem('theme', current === 'dark' ? 'light' : 'dark');
+themeSelector.addEventListener('change', (e) => {
+  localStorage.setItem('terminal-theme', e.target.value);
   applyTheme();
 });
 applyTheme();
+
+// --- Real-time clock ---
+function updateTime() {
+  const el = document.getElementById('currentTime');
+  if (!el) return;
+  const now = new Date();
+  el.textContent = now.toISOString().replace('T', ' ').slice(0, 19);
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+// --- Boot screen ---
+function runBootScreen() {
+  const bootScreen = document.getElementById('boot-screen');
+  const bootText = document.getElementById('boot-text');
+  if (!bootScreen || !bootText) return;
+
+  const lines = [
+    'UNIVERSAL SEARCH TERMINAL v1.0',
+    '==============================',
+    '',
+    '> INITIALIZING...',
+    '> LOADING MODULES... [OK]',
+    '> CONNECTING TO NETWORK... [OK]',
+    '> SYSTEM READY',
+    '',
+    'Press ENTER to continue_'
+  ];
+
+  let lineIndex = 0;
+  let charIndex = 0;
+  let text = '';
+
+  function typeNext() {
+    if (lineIndex >= lines.length) {
+      document.addEventListener('keydown', function dismissBoot(e) {
+        if (e.key === 'Enter') {
+          bootScreen.style.display = 'none';
+          document.removeEventListener('keydown', dismissBoot);
+          queryInput.focus();
+        }
+      });
+      return;
+    }
+    const line = lines[lineIndex];
+    if (charIndex < line.length) {
+      text += line.charAt(charIndex);
+      bootText.textContent = text;
+      charIndex++;
+      setTimeout(typeNext, 25);
+    } else {
+      text += '\n';
+      bootText.textContent = text;
+      lineIndex++;
+      charIndex = 0;
+      setTimeout(typeNext, 80);
+    }
+  }
+  typeNext();
+}
+
+// --- Typewriter effect ---
+function typewriterEffect(element, text, speed = 30) {
+  element.textContent = '';
+  let i = 0;
+  const timer = setInterval(() => {
+    if (i < text.length) {
+      element.textContent += text.charAt(i);
+      i++;
+    } else {
+      clearInterval(timer);
+    }
+  }, speed);
+}
+
+// --- Show / hide search status ---
+function showSearchStatus() {
+  const status = document.getElementById('searchStatus');
+  if (status) status.style.display = 'block';
+}
+function hideSearchStatus() {
+  const status = document.getElementById('searchStatus');
+  if (status) status.style.display = 'none';
+}
 
 // --- Debounce ---
 function debounce(fn, ms) {
@@ -75,7 +161,11 @@ function getFilters() {
 // --- Universal Search ---
 async function universalSearch(page = 1) {
   const query = queryInput.value.trim();
-  if (!query) { showError('Введите поисковый запрос'); return; }
+  if (!query) { showError('> ERROR: ENTER SEARCH QUERY'); return; }
+
+  // Easter eggs
+  if (handleEasterEgg(query)) return;
+
   hideError();
 
   lastQuery = query;
@@ -91,6 +181,7 @@ async function universalSearch(page = 1) {
 
   saveToHistory(query);
   renderHistory();
+  showSearchStatus();
 
   const { sources, contentType, sort, lang, dateFrom, dateTo } = lastFilters;
   const apiFilters = { sort, lang, dateFrom, dateTo, page };
@@ -106,12 +197,91 @@ async function universalSearch(page = 1) {
     const settled = await Promise.allSettled(tasks);
     const newResults = settled.flatMap(r => r.status === 'fulfilled' ? r.value : []);
     allResults = page === 1 ? newResults : [...allResults, ...newResults];
+    hideSearchStatus();
     displayResults(allResults);
     loadMoreBtn.style.display = newResults.length > 0 ? 'inline-flex' : 'none';
   } catch (err) {
-    showError('Ошибка при поиске: ' + err.message);
+    hideSearchStatus();
+    showError('> ERROR: ' + err.message);
     resultsDiv.innerHTML = '';
   }
+}
+
+// --- Easter eggs ---
+function handleEasterEgg(query) {
+  const cmd = query.trim().toLowerCase();
+  if (cmd === '/help') {
+    resultsDiv.innerHTML = '';
+    hideSearchStatus();
+    tabsDiv.style.display = 'none';
+    loadMoreBtn.style.display = 'none';
+    resultsDiv.innerHTML = `<div class="result-card">
+      <div class="result-card-index">┌─ [HELP] ─────────────────────────────────────────────────────────┐</div>
+      <div class="result-card-description">
+        /help    - Show this help message<br>
+        /matrix  - Activate Matrix mode<br>
+        /cowsay  - Display ASCII cow<br>
+        Ctrl+/   - Focus search input<br>
+        Ctrl+H   - Toggle history panel<br>
+        Esc      - Close modal
+      </div>
+    </div>`;
+    return true;
+  }
+  if (cmd === '/cowsay') {
+    resultsDiv.innerHTML = '';
+    hideSearchStatus();
+    tabsDiv.style.display = 'none';
+    loadMoreBtn.style.display = 'none';
+    resultsDiv.innerHTML = `<div class="result-card"><pre class="result-card-description">
+ _____________________
+< UNIVERSAL SEARCH HUB >
+ ---------------------
+        \\   ^__^
+         \\  (oo)\\_______
+            (__)\\       )\\/\\
+                ||----w |
+                ||     ||
+    </pre></div>`;
+    return true;
+  }
+  if (cmd === '/matrix') {
+    startMatrix();
+    return true;
+  }
+  return false;
+}
+
+// --- Matrix easter egg ---
+function startMatrix() {
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;top:0;left:0;z-index:9998;cursor:pointer';
+  canvas.title = 'Click to exit Matrix mode';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const cols = Math.floor(canvas.width / 16);
+  const drops = Array(cols).fill(1);
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()/\\|<>';
+  const interval = setInterval(() => {
+    ctx.fillStyle = 'rgba(0,0,0,0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#00ff00';
+    ctx.font = '14px Courier New';
+    drops.forEach((y, i) => {
+      ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 16, y * 16);
+      const MATRIX_DROP_RESET_THRESHOLD = 0.975; // probability a column resets after reaching the bottom
+      if (y * 16 > canvas.height && Math.random() > MATRIX_DROP_RESET_THRESHOLD) drops[i] = 0;
+      drops[i]++;
+    });
+  }, 50);
+  canvas.addEventListener('click', () => {
+    clearInterval(interval);
+    canvas.remove();
+    queryInput.value = '';
+    queryInput.focus();
+  });
 }
 
 // --- Display results ---
@@ -119,7 +289,7 @@ function displayResults(results) {
   resultsDiv.innerHTML = '';
 
   if (results.length === 0) {
-    resultsDiv.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>Ничего не найдено. Попробуйте изменить запрос или фильтры.</p></div>';
+    resultsDiv.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>> NO RESULTS FOUND. MODIFY QUERY OR FILTERS.</p></div>';
     tabsDiv.style.display = 'none';
     return;
   }
@@ -131,7 +301,7 @@ function displayResults(results) {
     const count = src === 'all' ? results.length : results.filter(r => r.source === src).length;
     const btn = document.createElement('button');
     btn.className = 'tab-btn' + (src === activeTab ? ' active' : '');
-    btn.textContent = `${sourceLabel(src)} (${count})`;
+    btn.textContent = `[${sourceLabel(src).toUpperCase()}] (${count})`;
     btn.dataset.tab = src;
     btn.addEventListener('click', () => { activeTab = src; displayResults(allResults); });
     tabsDiv.appendChild(btn);
@@ -139,11 +309,11 @@ function displayResults(results) {
   tabsDiv.style.display = 'flex';
 
   const filtered = activeTab === 'all' ? results : results.filter(r => r.source === activeTab);
-  filtered.forEach(item => resultsDiv.appendChild(createResultCard(item)));
+  filtered.forEach((item, index) => resultsDiv.appendChild(createResultCard(item, index)));
 }
 
 function sourceLabel(src) {
-  const labels = { all: 'Все', archive: 'Archive', wikipedia: 'Wikipedia', unsplash: 'Unsplash', openlibrary: 'OpenLibrary', wikimedia: 'Wikimedia' };
+  const labels = { all: 'All', archive: 'Archive', wikipedia: 'Wikipedia', unsplash: 'Unsplash', openlibrary: 'OpenLibrary', wikimedia: 'Wikimedia' };
   return labels[src] || src;
 }
 
@@ -152,38 +322,51 @@ function typeIcon(type) {
   return icons[type] || '📁';
 }
 
-// --- Create result card ---
-function createResultCard(item) {
+// --- Create result card (terminal style) ---
+function createResultCard(item, index) {
   const card = document.createElement('div');
   card.className = 'result-card';
 
+  const idx = String(index + 1).padStart(3, '0');
   const thumbHtml = item.thumbnail
-    ? `<img class="result-card-thumb" src="${escapeAttr(item.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">`
-      + `<div class="result-card-thumb-placeholder" style="display:none">${typeIcon(item.type)}</div>`
+    ? `<img class="result-card-thumb" src="${escapeAttr(item.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">`
     : `<div class="result-card-thumb-placeholder">${typeIcon(item.type)}</div>`;
 
   card.innerHTML = `
     ${thumbHtml}
-    <div class="result-card-body">
-      <div class="result-card-header">
-        <span class="result-card-title">${escapeHtml(truncate(item.title, 80))}</span>
-        <span class="source-badge badge-${item.source}">${sourceLabel(item.source)}</span>
-      </div>
-      <p class="result-card-description">${escapeHtml(truncate(item.description, 120))}</p>
-      <div class="result-card-meta">
-        ${item.author ? `<span class="result-card-author">👤 ${escapeHtml(truncate(item.author, 40))}</span>` : ''}
-        ${item.date ? `<span class="result-card-date">📅 ${formatDate(item.date)}</span>` : ''}
-      </div>
-    </div>`;
+    <div class="result-card-index">┌─ [${escapeHtml(idx)}] ──────────────────────────────────────────────────────────┐</div>
+    <div class="result-card-meta">
+      <span class="result-meta-label">TITLE   :</span>
+      <span class="result-meta-value">${escapeHtml(truncate(item.title, 80))}</span>
+      <span class="result-meta-label">SOURCE  :</span>
+      <span class="result-meta-value">${escapeHtml(sourceLabel(item.source).toUpperCase())}</span>
+      <span class="result-meta-label">TYPE    :</span>
+      <span class="result-meta-value">${escapeHtml((item.type || 'unknown').toUpperCase())}</span>
+      ${item.author ? `<span class="result-meta-label">AUTHOR  :</span><span class="result-meta-value">${escapeHtml(truncate(item.author, 40))}</span>` : ''}
+      ${item.date ? `<span class="result-meta-label">DATE    :</span><span class="result-meta-value">${escapeHtml(formatDate(item.date))}</span>` : ''}
+      <span class="result-meta-label">STATUS  :</span>
+      <span class="result-meta-value status-ok">[AVAILABLE]</span>
+    </div>
+    <div class="result-card-description">${escapeHtml(truncate(item.description, 200))}</div>
+    <div class="result-card-actions">&gt; PRESS [ENTER] TO VIEW | [D] DOWNLOAD | [S] SHARE | [*] FAV</div>`;
 
   card.addEventListener('click', () => openItem(item));
+  card.tabIndex = 0;
+  card.addEventListener('keydown', (e) => {
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.key === 'Enter') openItem(item);
+    if (e.key === 'd' || e.key === 'D') downloadItem();
+    if (e.key === 's' || e.key === 'S') shareItem();
+    if (e.key === '*') addToFav(item);
+  });
   return card;
 }
 
 // --- Open modal ---
 function openItem(item) {
   currentItem = item;
-  modalTitle.textContent = item.title || 'Без названия';
+  modalTitle.textContent = item.title || 'NO TITLE';
   modalDescription.textContent = item.description || '';
 
   modalBody.innerHTML = '';
@@ -206,10 +389,9 @@ function openItem(item) {
     modalBody.appendChild(img);
   }
 
-  // Update favorite button
   const favs = loadFavorites();
   const isFav = favs.some(f => f.url === item.url);
-  btnFavorite.textContent = isFav ? '★ Удалить из избранного' : '⭐ В избранное';
+  btnFavorite.textContent = isFav ? '[*] UNFAVORITE' : '[*] FAVORITE';
 
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
@@ -229,8 +411,8 @@ function shareItem() {
   if (navigator.share) {
     navigator.share({ title: currentItem.title, url }).catch(() => {});
   } else {
-    navigator.clipboard.writeText(url).then(() => alert('✅ Ссылка скопирована!')).catch(() => {
-      prompt('Скопируйте ссылку:', url);
+    navigator.clipboard.writeText(url).then(() => alert('> LINK COPIED TO CLIPBOARD')).catch(() => {
+      prompt('> COPY LINK:', url);
     });
   }
 }
@@ -240,16 +422,22 @@ function downloadItem() {
   window.open(currentItem.url, '_blank');
 }
 
+function addToFav(item) {
+  if (!item) return;
+  saveToFavorites(item);
+  renderFavorites();
+}
+
 function toggleFavorite() {
   if (!currentItem) return;
   const favs = loadFavorites();
   const isFav = favs.some(f => f.url === currentItem.url);
   if (isFav) {
     removeFromFavorites(currentItem.url);
-    btnFavorite.textContent = '⭐ В избранное';
+    btnFavorite.textContent = '[*] FAVORITE';
   } else {
     saveToFavorites(currentItem);
-    btnFavorite.textContent = '★ Удалить из избранного';
+    btnFavorite.textContent = '[*] UNFAVORITE';
   }
   renderFavorites();
 }
@@ -259,13 +447,13 @@ function renderHistory() {
   const history = loadHistory();
   historyList.innerHTML = '';
   if (history.length === 0) {
-    historyList.innerHTML = '<li style="color:var(--text-secondary);font-size:12px">Нет истории</li>';
+    historyList.innerHTML = '<li style="color:var(--text-secondary);">> NO HISTORY</li>';
     return;
   }
   history.slice(0, 10).forEach(q => {
     const li = document.createElement('li');
     const span = document.createElement('span');
-    span.textContent = q;
+    span.textContent = '> ' + q;
     span.style.overflow = 'hidden';
     span.style.textOverflow = 'ellipsis';
     li.appendChild(span);
@@ -282,19 +470,19 @@ function renderFavorites() {
   const favs = loadFavorites();
   favoritesList.innerHTML = '';
   if (favs.length === 0) {
-    favoritesList.innerHTML = '<li style="color:var(--text-secondary);font-size:12px">Нет избранного</li>';
+    favoritesList.innerHTML = '<li style="color:var(--text-secondary);">> NO FAVORITES</li>';
     return;
   }
   favs.slice(0, 10).forEach(item => {
     const li = document.createElement('li');
     const span = document.createElement('span');
-    span.textContent = truncate(item.title, 30);
+    span.textContent = '* ' + truncate(item.title, 28);
     span.style.overflow = 'hidden';
     span.style.textOverflow = 'ellipsis';
     const removeBtn = document.createElement('button');
     removeBtn.className = 'remove-btn';
-    removeBtn.textContent = '✕';
-    removeBtn.title = 'Удалить';
+    removeBtn.textContent = '[X]';
+    removeBtn.title = 'Remove';
     removeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       removeFromFavorites(item.url);
@@ -317,11 +505,29 @@ function escapeHtml(str) {
 }
 function escapeAttr(str) { return String(str).replace(/"/g, '&quot;'); }
 
+// --- Clear search ---
+function clearSearch() {
+  queryInput.value = '';
+  resultsDiv.innerHTML = '';
+  tabsDiv.style.display = 'none';
+  loadMoreBtn.style.display = 'none';
+  hideSearchStatus();
+  hideError();
+  queryInput.focus();
+}
+
+// --- Toggle sidebar ---
+function toggleSidebar() {
+  if (window.innerWidth <= 768) return; // sidebar always visible on mobile as block
+  sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
+}
+
 // --- Event listeners ---
 searchBtn.addEventListener('click', () => universalSearch(1));
 queryInput.addEventListener('keydown', e => { if (e.key === 'Enter') universalSearch(1); });
 queryInput.addEventListener('input', debounce(() => {}, 300));
-
+clearBtn.addEventListener('click', clearSearch);
+historyBtn.addEventListener('click', toggleSidebar);
 loadMoreBtn.addEventListener('click', () => universalSearch(currentPage + 1));
 
 modalClose.addEventListener('click', closeModal);
@@ -331,9 +537,19 @@ btnDownload.addEventListener('click', downloadItem);
 btnOpenSource.addEventListener('click', () => { if (currentItem) window.open(currentItem.url, '_blank'); });
 btnFavorite.addEventListener('click', toggleFavorite);
 
+// --- Global keyboard shortcuts ---
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && modal.style.display === 'flex') closeModal();
-  if (e.key === 'Enter' && document.activeElement !== queryInput) {}
+  if (e.key === 'Escape') {
+    if (modal.style.display === 'flex') closeModal();
+  }
+  if (e.ctrlKey && e.key === 'h') {
+    e.preventDefault();
+    toggleSidebar();
+  }
+  if (e.ctrlKey && e.key === '/') {
+    e.preventDefault();
+    queryInput.focus();
+  }
 });
 
 // --- URL params on load ---
@@ -352,4 +568,5 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   renderHistory();
   renderFavorites();
+  runBootScreen();
 });
