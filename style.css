@@ -253,6 +253,8 @@ body {
   background: var(--bg-secondary);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 10px;
 }
 .input-label {
   margin-right: 10px;
@@ -271,6 +273,16 @@ body {
   padding: 5px;
 }
 .terminal-input::placeholder { color: var(--text-secondary); opacity: 0.5; }
+.terminal-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  background: var(--bg-primary);
+}
+
+.search-inline-btn {
+  white-space: nowrap;
+  min-width: 100px;
+}
 
 .cursor {
   display: inline-block;
@@ -584,4 +596,90 @@ body {
   .source-checkboxes, .filter-controls { flex-direction: column; gap: 8px; }
   .modal-actions { flex-direction: column; }
   .modal-actions .terminal-btn { width: 100%; text-align: center; }
+
+  .terminal-input {
+    font-size: 16px;
+    min-height: 44px;
+    flex: 1 1 100%;
+  }
+
+  .search-inline-btn {
+    flex: 1 1 100%;
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .terminal-btn {
+    min-height: 44px;
+    padding: 12px 15px;
+  }
+
+  .input-label {
+    flex: 0 0 100%;
+    margin-bottom: 5px;
+  }
+
+  .cursor { display: none; }
+
+  .terminal-input:focus {
+    outline: 3px solid var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .button-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .button-row .terminal-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (hover: none) {
+  .terminal-btn:hover {
+    background: transparent;
+    color: var(--text-primary);
+    box-shadow: none;
+    text-shadow: var(--text-glow);
+  }
+
+  .terminal-btn:active {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+  }
+}
+
+/* ===== TABLET ===== */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .search-inline-btn {
+    flex: 0 0 auto;
+    margin-left: 10px;
+  }
+
+  .terminal-input {
+    flex: 1;
+    min-width: 300px;
+  }
+
+  .results-container { padding: 0 20px; }
+
+  .result-card { font-size: 13px; }
+
+  .result-card::before,
+  .result-card::after { font-size: 10px; }
+
+  .modal-window {
+    max-width: 95vw;
+    margin: 10px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions .terminal-btn {
+    width: 100%;
+  }
 }

@@ -42,6 +42,7 @@ const favoritesList = document.getElementById('favorites-list');
 const errorMsg = document.getElementById('error-msg');
 const themeSelector = document.getElementById('themeSelector');
 const sidebar = document.getElementById('sidebar');
+const searchInlineBtn = document.getElementById('search-inline-btn');
 
 // --- Theme (terminal: green / amber / blue) ---
 function applyTheme() {
@@ -156,6 +157,13 @@ function getFilters() {
     dateFrom: document.getElementById('date-from').value,
     dateTo: document.getElementById('date-to').value,
   };
+}
+
+// --- Haptic feedback for mobile devices ---
+function hapticFeedback() {
+  if ('vibrate' in navigator) {
+    navigator.vibrate(50);
+  }
 }
 
 // --- Universal Search ---
@@ -523,8 +531,9 @@ function toggleSidebar() {
 }
 
 // --- Event listeners ---
-searchBtn.addEventListener('click', () => universalSearch(1));
-queryInput.addEventListener('keydown', e => { if (e.key === 'Enter') universalSearch(1); });
+searchBtn.addEventListener('click', () => { hapticFeedback(); universalSearch(1); });
+searchInlineBtn.addEventListener('click', () => { hapticFeedback(); universalSearch(1); });
+queryInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); universalSearch(1); } });
 queryInput.addEventListener('input', debounce(() => {}, 300));
 clearBtn.addEventListener('click', clearSearch);
 historyBtn.addEventListener('click', toggleSidebar);
@@ -569,4 +578,8 @@ window.addEventListener('DOMContentLoaded', () => {
   renderHistory();
   renderFavorites();
   runBootScreen();
+  // Auto-focus search input on non-touch (desktop) devices only
+  if (!window.matchMedia('(pointer: coarse)').matches) {
+    queryInput.focus();
+  }
 });
