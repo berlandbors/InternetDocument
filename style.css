@@ -236,7 +236,13 @@ body {
   transition: color 0.2s;
 }
 .checkbox-label:hover { color: var(--accent); text-shadow: var(--glow); }
-.checkbox-label input[type="checkbox"] { display: none; }
+.checkbox-label input[type="checkbox"] {
+  position: absolute;
+  clip: rect(0, 0, 0, 0);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
 .cb-indicator::before { content: '[ ]'; }
 .checkbox-label input[type="checkbox"]:checked ~ .cb-indicator::before { content: '[X]'; }
 

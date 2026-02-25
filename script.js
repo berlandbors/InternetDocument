@@ -271,7 +271,8 @@ function startMatrix() {
     ctx.font = '14px Courier New';
     drops.forEach((y, i) => {
       ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 16, y * 16);
-      if (y * 16 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      const MATRIX_DROP_RESET_THRESHOLD = 0.975; // probability a column resets after reaching the bottom
+      if (y * 16 > canvas.height && Math.random() > MATRIX_DROP_RESET_THRESHOLD) drops[i] = 0;
       drops[i]++;
     });
   }, 50);
@@ -326,7 +327,7 @@ function createResultCard(item, index) {
   const card = document.createElement('div');
   card.className = 'result-card';
 
-  const idx = String((index !== undefined ? index : 0) + 1).padStart(3, '0');
+  const idx = String(index + 1).padStart(3, '0');
   const thumbHtml = item.thumbnail
     ? `<img class="result-card-thumb" src="${escapeAttr(item.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">`
     : `<div class="result-card-thumb-placeholder">${typeIcon(item.type)}</div>`;
@@ -352,6 +353,8 @@ function createResultCard(item, index) {
   card.addEventListener('click', () => openItem(item));
   card.tabIndex = 0;
   card.addEventListener('keydown', (e) => {
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     if (e.key === 'Enter') openItem(item);
     if (e.key === 'd' || e.key === 'D') downloadItem();
     if (e.key === 's' || e.key === 'S') shareItem();
