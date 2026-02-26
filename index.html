@@ -47,8 +47,16 @@
       <!-- Sidebar -->
       <aside id="sidebar" class="sidebar">
         <div class="panel-border">┌─── COMMAND HISTORY ──────────────────┐</div>
+        <div class="sidebar-section-header">
+          <span id="history-count" class="item-count">(0)</span>
+          <button id="clear-history-btn" class="sidebar-clear-btn">[CLEAR ALL]</button>
+        </div>
         <ul id="history-list" class="sidebar-list"></ul>
         <div class="panel-border">├─── FAVORITES ────────────────────────┤</div>
+        <div class="sidebar-section-header">
+          <span id="favorites-count" class="item-count">(0)</span>
+          <button id="clear-favorites-btn" class="sidebar-clear-btn">[CLEAR ALL]</button>
+        </div>
         <ul id="favorites-list" class="sidebar-list"></ul>
         <div class="panel-border">└──────────────────────────────────────┘</div>
       </aside>
@@ -61,7 +69,9 @@
           <div class="source-checkboxes">
             <label class="checkbox-label"><input type="checkbox" name="source" value="archive" checked><span class="cb-indicator"></span> ARCHIVE.ORG</label>
             <label class="checkbox-label"><input type="checkbox" name="source" value="wikipedia" checked><span class="cb-indicator"></span> WIKIPEDIA</label>
-            <label class="checkbox-label"><input type="checkbox" name="source" value="unsplash" checked><span class="cb-indicator"></span> UNSPLASH</label>
+            <label class="checkbox-label"><input type="checkbox" name="source" value="pixabay" checked><span class="cb-indicator"></span> PIXABAY</label>
+            <label class="checkbox-label"><input type="checkbox" name="source" value="pexels" checked><span class="cb-indicator"></span> PEXELS</label>
+            <label class="checkbox-label"><input type="checkbox" name="source" value="flickr" checked><span class="cb-indicator"></span> FLICKR</label>
             <label class="checkbox-label"><input type="checkbox" name="source" value="openlibrary" checked><span class="cb-indicator"></span> OPENLIBRARY</label>
             <label class="checkbox-label"><input type="checkbox" name="source" value="wikimedia" checked><span class="cb-indicator"></span> WIKIMEDIA</label>
           </div>
@@ -172,6 +182,49 @@
           <button id="btn-favorite" class="terminal-btn">[*] FAVORITE</button>
         </div>
         <pre class="modal-border-line">╚═══════════════════════════════════════════════════════════════════╝</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Media Player Modal -->
+  <div id="media-modal" class="media-modal" style="display:none">
+    <div class="media-modal-content">
+      <div class="media-header">
+        <span id="media-title">Media Player</span>
+        <button class="media-close" id="media-close">[X]</button>
+      </div>
+
+      <div class="network-indicator" id="network-indicator">
+        <span id="network-status">🟢 Fast</span>
+        <span id="network-info">Analyzing...</span>
+      </div>
+
+      <!-- Video Player -->
+      <div id="video-container" class="media-container" style="display:none">
+        <video id="video-player" class="media-player" controls>
+          Your browser does not support video playback.
+        </video>
+      </div>
+
+      <!-- Audio Player -->
+      <div id="audio-container" class="media-container" style="display:none">
+        <audio id="audio-player" class="media-player" controls>
+          Your browser does not support audio playback.
+        </audio>
+        <canvas id="audio-visualizer" width="800" height="200"></canvas>
+      </div>
+
+      <!-- Image Viewer -->
+      <div id="image-container" class="media-container" style="display:none">
+        <img id="image-viewer" class="media-image" alt="Image">
+        <div class="image-info" id="image-info"></div>
+      </div>
+
+      <!-- Controls -->
+      <div class="media-controls">
+        <button id="media-prev" class="media-btn">[◄ PREV]</button>
+        <button id="media-download" class="media-btn">[↓ DOWNLOAD]</button>
+        <button id="media-next" class="media-btn">[NEXT ►]</button>
       </div>
     </div>
   </div>
