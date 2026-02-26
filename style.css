@@ -65,6 +65,28 @@ body {
   text-shadow: 0 0 5px #00ff00;
 }
 
+/* Boot screen button */
+.boot-screen .terminal-btn {
+  margin-top: 20px;
+  width: 80%;
+  max-width: 300px;
+  min-height: 50px;
+  font-size: 16px;
+}
+
+/* На мобильных увеличить размер кнопки boot screen */
+@media (max-width: 768px) {
+  .boot-screen .terminal-btn {
+    width: 90%;
+    min-height: 60px;
+    font-size: 18px;
+  }
+
+  .boot-text {
+    font-size: 12px;
+  }
+}
+
 /* ===== SCANLINES ===== */
 .scanlines {
   position: fixed;
@@ -325,6 +347,21 @@ body {
   text-shadow: none;
 }
 .terminal-btn:active { transform: scale(0.98); }
+
+/* Улучшенная обратная связь для touch-устройств */
+@media (hover: none) {
+  .terminal-btn:active {
+    background: var(--text-primary) !important;
+    color: var(--bg-primary) !important;
+    transform: scale(0.95);
+    box-shadow: var(--glow);
+  }
+
+  .search-inline-btn:active {
+    background: var(--accent) !important;
+    box-shadow: 0 0 20px var(--accent);
+  }
+}
 
 /* ===== TERMINAL SELECT ===== */
 .terminal-select {

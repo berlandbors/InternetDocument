@@ -70,7 +70,20 @@ updateTime();
 function runBootScreen() {
   const bootScreen = document.getElementById('boot-screen');
   const bootText = document.getElementById('boot-text');
+  const bootSkipBtn = document.getElementById('boot-skip-btn');
   if (!bootScreen || !bootText) return;
+
+  // Функция для закрытия boot screen
+  function dismissBootScreen() {
+    bootScreen.style.display = 'none';
+    // На десктопе фокусируемся на поле ввода
+    if (!window.matchMedia('(pointer: coarse)').matches) {
+      queryInput.focus();
+    }
+  }
+
+  // Проверяем, touch-устройство или нет
+  const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
 
   const lines = [
     'UNIVERSAL SEARCH TERMINAL v1.0',
@@ -81,22 +94,32 @@ function runBootScreen() {
     '> CONNECTING TO NETWORK... [OK]',
     '> SYSTEM READY',
     '',
-    'Press ENTER to continue_'
+    isTouchDevice ? 'Tap button below to continue_' : 'Press ENTER to continue_'
   ];
 
   let lineIndex = 0;
   let charIndex = 0;
   let text = '';
+  let typingComplete = false;
 
   function typeNext() {
     if (lineIndex >= lines.length) {
+      typingComplete = true;
+
+      // На touch-устройствах показываем кнопку
+      if (isTouchDevice && bootSkipBtn) {
+        bootSkipBtn.style.display = 'block';
+        bootSkipBtn.addEventListener('click', dismissBootScreen);
+      }
+
+      // На десктопе слушаем Enter
       document.addEventListener('keydown', function dismissBoot(e) {
         if (e.key === 'Enter') {
-          bootScreen.style.display = 'none';
+          dismissBootScreen();
           document.removeEventListener('keydown', dismissBoot);
-          queryInput.focus();
         }
       });
+
       return;
     }
     const line = lines[lineIndex];
@@ -113,7 +136,15 @@ function runBootScreen() {
       setTimeout(typeNext, 80);
     }
   }
+
   typeNext();
+
+  // Альтернатива: клик в любом месте экрана закрывает boot screen после завершения печати
+  bootScreen.addEventListener('click', () => {
+    if (typingComplete) {
+      dismissBootScreen();
+    }
+  });
 }
 
 // --- Typewriter effect ---
@@ -533,7 +564,27 @@ function toggleSidebar() {
 // --- Event listeners ---
 searchBtn.addEventListener('click', () => { hapticFeedback(); universalSearch(1); });
 searchInlineBtn.addEventListener('click', () => { hapticFeedback(); universalSearch(1); });
-queryInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); universalSearch(1); } });
+
+// Запасной механизм: обработка touch-событий для старых Android устройств
+if ('ontouchstart' in window) {
+  searchInlineBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    hapticFeedback();
+    universalSearch(1);
+  });
+}
+queryInput.addEventListener('keydown', e => { 
+  if (e.key === 'Enter' || e.keyCode === 13) { 
+    e.preventDefault(); 
+    universalSearch(1); 
+  } 
+});
+
+// Дополнительная обработка для некоторых мобильных браузеров
+queryInput.addEventListener('search', e => {
+  e.preventDefault();
+  universalSearch(1);
+});
 queryInput.addEventListener('input', debounce(() => {}, 300));
 clearBtn.addEventListener('click', clearSearch);
 historyBtn.addEventListener('click', toggleSidebar);
