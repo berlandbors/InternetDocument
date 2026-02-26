@@ -1,9 +1,12 @@
 import { CONFIG } from './config.js';
 import { searchArchive } from './modules/archive.js';
 import { searchWikipedia } from './modules/wikipedia.js';
-import { searchUnsplash } from './modules/unsplash.js';
+import { searchPixabay } from './modules/pixabay.js';
+import { searchPexels } from './modules/pexels.js';
+import { searchFlickr } from './modules/flickr.js';
 import { searchOpenLibrary } from './modules/openlibrary.js';
 import { searchWikimedia } from './modules/wikimedia.js';
+import { NetworkAnalyzer } from './modules/network.js';
 import {
   saveToHistory, loadHistory,
   saveToFavorites, loadFavorites, removeFromFavorites,
@@ -18,6 +21,8 @@ let lastQuery = '';
 let lastFilters = {};
 let allResults = [];
 let activeTab = 'all';
+let currentMediaPlaylist = [];
+let currentMediaIndex = 0;
 
 // --- DOM refs ---
 const queryInput = document.getElementById('query');
@@ -44,6 +49,32 @@ const warningMsg = document.getElementById('warning-msg');
 const themeSelector = document.getElementById('themeSelector');
 const sidebar = document.getElementById('sidebar');
 const searchInlineBtn = document.getElementById('search-inline-btn');
+
+// Media player elements
+const mediaModal = document.getElementById('media-modal');
+const mediaClose = document.getElementById('media-close');
+const mediaTitle = document.getElementById('media-title');
+const videoContainer = document.getElementById('video-container');
+const audioContainer = document.getElementById('audio-container');
+const imageContainer = document.getElementById('image-container');
+const videoPlayer = document.getElementById('video-player');
+const audioPlayer = document.getElementById('audio-player');
+const imageViewer = document.getElementById('image-viewer');
+const imageInfo = document.getElementById('image-info');
+const networkStatus = document.getElementById('network-status');
+const networkInfo = document.getElementById('network-info');
+const mediaPrev = document.getElementById('media-prev');
+const mediaNext = document.getElementById('media-next');
+const mediaDownload = document.getElementById('media-download');
+
+// History management elements
+const clearHistoryBtn = document.getElementById('clear-history-btn');
+const clearFavoritesBtn = document.getElementById('clear-favorites-btn');
+const historyCount = document.getElementById('history-count');
+const favoritesCount = document.getElementById('favorites-count');
+
+// Network analyzer
+const networkAnalyzer = new NetworkAnalyzer();
 
 // --- Theme (terminal: green / amber / blue) ---
 function applyTheme() {
@@ -230,7 +261,9 @@ async function universalSearch(page = 1) {
   const tasks = [];
   if (sources.includes('archive')) tasks.push(searchArchive(query, contentType, apiFilters).catch(e => { console.error('[universalSearch] archive error:', e); return []; }));
   if (sources.includes('wikipedia')) tasks.push(searchWikipedia(query, { lang, limit: 20 }).catch(e => { console.error('[universalSearch] wikipedia error:', e); return []; }));
-  if (sources.includes('unsplash')) tasks.push(searchUnsplash(query, apiFilters).catch(e => { console.error('[universalSearch] unsplash error:', e); return []; }));
+  if (sources.includes('pixabay')) tasks.push(searchPixabay(query, apiFilters).catch(e => { console.error('[universalSearch] pixabay error:', e); return []; }));
+  if (sources.includes('pexels')) tasks.push(searchPexels(query, apiFilters).catch(e => { console.error('[universalSearch] pexels error:', e); return []; }));
+  if (sources.includes('flickr')) tasks.push(searchFlickr(query, apiFilters).catch(e => { console.error('[universalSearch] flickr error:', e); return []; }));
   if (sources.includes('openlibrary')) tasks.push(searchOpenLibrary(query, apiFilters).catch(e => { console.error('[universalSearch] openlibrary error:', e); return []; }));
   if (sources.includes('wikimedia')) tasks.push(searchWikimedia(query, apiFilters).catch(e => { console.error('[universalSearch] wikimedia error:', e); return []; }));
 
@@ -371,7 +404,7 @@ function displayResults(results) {
 }
 
 function sourceLabel(src) {
-  const labels = { all: 'All', archive: 'Archive', wikipedia: 'Wikipedia', unsplash: 'Unsplash', openlibrary: 'OpenLibrary', wikimedia: 'Wikimedia' };
+  const labels = { all: 'All', archive: 'Archive', wikipedia: 'Wikipedia', pixabay: 'Pixabay', pexels: 'Pexels', flickr: 'Flickr', openlibrary: 'OpenLibrary', wikimedia: 'Wikimedia' };
   return labels[src] || src;
 }
 
@@ -423,6 +456,10 @@ function createResultCard(item, index) {
 
 // --- Open modal ---
 function openItem(item) {
+  if (item.type === 'image' || item.type === 'video' || item.type === 'audio' || item.mediaType === 'movies' || item.mediaType === 'audio') {
+    openMediaPlayer(item, allResults);
+    return;
+  }
   currentItem = item;
   modalTitle.textContent = item.title || 'NO TITLE';
   modalDescription.textContent = item.description || '';
@@ -504,6 +541,7 @@ function toggleFavorite() {
 function renderHistory() {
   const history = loadHistory();
   historyList.innerHTML = '';
+  updateHistoryCount();
   if (history.length === 0) {
     historyList.innerHTML = '<li style="color:var(--text-secondary);">> NO HISTORY</li>';
     return;
@@ -514,7 +552,16 @@ function renderHistory() {
     span.textContent = '> ' + q;
     span.style.overflow = 'hidden';
     span.style.textOverflow = 'ellipsis';
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.textContent = '[X]';
+    removeBtn.title = 'Remove';
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeHistoryItem(q);
+    });
     li.appendChild(span);
+    li.appendChild(removeBtn);
     li.addEventListener('click', (e) => {
       if (e.target.classList.contains('remove-btn')) return;
       queryInput.value = q;
@@ -527,6 +574,7 @@ function renderHistory() {
 function renderFavorites() {
   const favs = loadFavorites();
   favoritesList.innerHTML = '';
+  updateFavoritesCount();
   if (favs.length === 0) {
     favoritesList.innerHTML = '<li style="color:var(--text-secondary);">> NO FAVORITES</li>';
     return;
@@ -560,6 +608,172 @@ function hideError() { errorMsg.style.display = 'none'; }
 // --- Warning display ---
 function showWarning(msg) { warningMsg.textContent = msg; warningMsg.style.display = 'block'; }
 function hideWarning() { warningMsg.style.display = 'none'; }
+
+// --- History management ---
+function updateHistoryCount() {
+  const history = loadHistory();
+  if (historyCount) historyCount.textContent = `(${history.length})`;
+}
+
+function updateFavoritesCount() {
+  const favs = loadFavorites();
+  if (favoritesCount) favoritesCount.textContent = `(${favs.length})`;
+}
+
+function removeHistoryItem(query) {
+  let history = loadHistory();
+  history = history.filter(q => q !== query);
+  try { localStorage.setItem('search_history', JSON.stringify(history)); } catch {}
+  renderHistory();
+}
+
+function clearAllHistory() {
+  if (confirm('⚠️ Clear all search history? This cannot be undone.')) {
+    try { localStorage.removeItem('search_history'); } catch {}
+    renderHistory();
+    showError('✅ History cleared');
+    setTimeout(hideError, 2000);
+  }
+}
+
+function clearAllFavorites() {
+  if (confirm('⚠️ Clear all favorites? This cannot be undone.')) {
+    try { localStorage.removeItem('favorites'); } catch {}
+    renderFavorites();
+    showError('✅ Favorites cleared');
+    setTimeout(hideError, 2000);
+  }
+}
+
+// --- Media player ---
+let audioAnalyser = null;
+
+async function openMediaPlayer(item, playlist = []) {
+  currentMediaPlaylist = playlist.length > 0 ? playlist : [item];
+  currentMediaIndex = currentMediaPlaylist.findIndex(i => i.id === item.id);
+  if (currentMediaIndex === -1) currentMediaIndex = 0;
+
+  // Analyze network quality
+  const netStatus = await networkAnalyzer.analyze();
+  updateNetworkIndicator(netStatus);
+
+  loadMediaItem(currentMediaPlaylist[currentMediaIndex]);
+  mediaModal.style.display = 'flex';
+}
+
+function loadMediaItem(item) {
+  mediaTitle.textContent = item.title || 'Media Player';
+
+  // Hide all containers
+  videoContainer.style.display = 'none';
+  audioContainer.style.display = 'none';
+  imageContainer.style.display = 'none';
+
+  // Show appropriate player
+  if (item.type === 'video' || item.mediaType === 'movies') {
+    loadVideo(item);
+  } else if (item.type === 'audio' || item.mediaType === 'audio') {
+    loadAudio(item);
+  } else {
+    loadImage(item);
+  }
+
+  // Update controls
+  mediaPrev.disabled = currentMediaIndex === 0;
+  mediaNext.disabled = currentMediaIndex === currentMediaPlaylist.length - 1;
+  mediaDownload.onclick = () => downloadMedia(item);
+}
+
+function loadVideo(item) {
+  videoContainer.style.display = 'block';
+  videoPlayer.src = item.url;
+  videoPlayer.load();
+}
+
+function loadAudio(item) {
+  audioContainer.style.display = 'block';
+  audioPlayer.src = item.url;
+  audioPlayer.load();
+  setupAudioVisualizer();
+}
+
+function loadImage(item) {
+  imageContainer.style.display = 'block';
+  imageViewer.src = item.fullImage || item.thumbnail || item.url;
+  imageInfo.textContent = `${item.author || 'Unknown'} • ${item.width || '?'}x${item.height || '?'}`;
+}
+
+function setupAudioVisualizer() {
+  const canvas = document.getElementById('audio-visualizer');
+  const ctx = canvas.getContext('2d');
+
+  // Create AudioContext and connect source only once per audio element
+  if (!audioAnalyser) {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    audioAnalyser = audioContext.createAnalyser();
+    const source = audioContext.createMediaElementSource(audioPlayer);
+    source.connect(audioAnalyser);
+    audioAnalyser.connect(audioContext.destination);
+    audioAnalyser.fftSize = 256;
+  }
+
+  const bufferLength = audioAnalyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+
+  function draw() {
+    requestAnimationFrame(draw);
+    audioAnalyser.getByteFrequencyData(dataArray);
+
+    ctx.fillStyle = 'rgb(0, 0, 0)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const barWidth = (canvas.width / bufferLength) * 2.5;
+    let x = 0;
+
+    for (let i = 0; i < bufferLength; i++) {
+      const barHeight = dataArray[i] / 2;
+      ctx.fillStyle = `rgb(0, ${barHeight + 100}, 255)`;
+      ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+      x += barWidth + 1;
+    }
+  }
+
+  draw();
+}
+
+function updateNetworkIndicator(status) {
+  networkStatus.textContent = `${status.icon} ${status.label}`;
+  networkInfo.textContent = `${status.speed} Mbps • ${status.recommendation}`;
+}
+
+function closeMediaPlayer() {
+  mediaModal.style.display = 'none';
+  videoPlayer.pause();
+  audioPlayer.pause();
+  videoPlayer.src = '';
+  audioPlayer.src = '';
+}
+
+function nextMedia() {
+  if (currentMediaIndex < currentMediaPlaylist.length - 1) {
+    currentMediaIndex++;
+    loadMediaItem(currentMediaPlaylist[currentMediaIndex]);
+  }
+}
+
+function prevMedia() {
+  if (currentMediaIndex > 0) {
+    currentMediaIndex--;
+    loadMediaItem(currentMediaPlaylist[currentMediaIndex]);
+  }
+}
+
+function downloadMedia(item) {
+  const a = document.createElement('a');
+  a.href = item.fullImage || item.url;
+  a.download = item.title || 'download';
+  a.click();
+}
 
 // --- Helpers ---
 function escapeHtml(str) {
@@ -620,9 +834,19 @@ btnDownload.addEventListener('click', downloadItem);
 btnOpenSource.addEventListener('click', () => { if (currentItem) window.open(currentItem.url, '_blank'); });
 btnFavorite.addEventListener('click', toggleFavorite);
 
+// Media player events
+mediaClose.addEventListener('click', closeMediaPlayer);
+mediaPrev.addEventListener('click', prevMedia);
+mediaNext.addEventListener('click', nextMedia);
+
+// History management events
+clearHistoryBtn.addEventListener('click', clearAllHistory);
+clearFavoritesBtn.addEventListener('click', clearAllFavorites);
+
 // --- Global keyboard shortcuts ---
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    if (mediaModal.style.display === 'flex') { closeMediaPlayer(); return; }
     if (modal.style.display === 'flex') closeModal();
   }
   if (e.ctrlKey && e.key === 'h') {
