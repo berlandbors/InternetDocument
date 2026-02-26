@@ -12,6 +12,9 @@
   <div id="boot-screen" class="boot-screen">
     <div class="boot-content">
       <pre class="boot-text" id="boot-text"></pre>
+      <button id="boot-skip-btn" class="terminal-btn" style="display:none; margin-top: 20px;">
+        [TAP TO START]
+      </button>
     </div>
   </div>
 
@@ -64,7 +67,17 @@
           </div>
           <div class="search-input-section">
             <span class="input-label">│ QUERY &gt;</span>
-            <input id="query" type="text" class="terminal-input" placeholder="enter_search_query...">
+            <input 
+              id="query" 
+              type="search" 
+              class="terminal-input" 
+              placeholder="enter_search_query..."
+              inputmode="search"
+              enterkeyhint="search"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+            >
             <span class="cursor"></span>
             <button id="search-inline-btn" class="terminal-btn search-inline-btn">[SEARCH]</button>
           </div>
