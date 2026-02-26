@@ -413,6 +413,15 @@ body {
   font-family: inherit;
 }
 
+.warning-msg {
+  background: rgba(255, 165, 0, 0.1);
+  border: 1px solid orange;
+  padding: 12px 16px;
+  color: orange;
+  margin-bottom: 14px;
+  font-family: inherit;
+}
+
 /* ===== SEARCH STATUS ===== */
 .search-status {
   padding: 15px;

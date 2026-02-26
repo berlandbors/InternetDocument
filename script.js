@@ -40,6 +40,7 @@ const btnFavorite = document.getElementById('btn-favorite');
 const historyList = document.getElementById('history-list');
 const favoritesList = document.getElementById('favorites-list');
 const errorMsg = document.getElementById('error-msg');
+const warningMsg = document.getElementById('warning-msg');
 const themeSelector = document.getElementById('themeSelector');
 const sidebar = document.getElementById('sidebar');
 const searchInlineBtn = document.getElementById('search-inline-btn');
@@ -206,6 +207,7 @@ async function universalSearch(page = 1) {
   if (handleEasterEgg(query)) return;
 
   hideError();
+  hideWarning();
 
   lastQuery = query;
   lastFilters = getFilters();
@@ -226,15 +228,32 @@ async function universalSearch(page = 1) {
   const apiFilters = { sort, lang, dateFrom, dateTo, page };
 
   const tasks = [];
-  if (sources.includes('archive')) tasks.push(searchArchive(query, contentType, apiFilters).catch(() => []));
-  if (sources.includes('wikipedia')) tasks.push(searchWikipedia(query, { lang, limit: 20 }).catch(() => []));
-  if (sources.includes('unsplash')) tasks.push(searchUnsplash(query, apiFilters).catch(() => []));
-  if (sources.includes('openlibrary')) tasks.push(searchOpenLibrary(query, apiFilters).catch(() => []));
-  if (sources.includes('wikimedia')) tasks.push(searchWikimedia(query, apiFilters).catch(() => []));
+  if (sources.includes('archive')) tasks.push(searchArchive(query, contentType, apiFilters).catch(e => { console.error('[universalSearch] archive error:', e); return []; }));
+  if (sources.includes('wikipedia')) tasks.push(searchWikipedia(query, { lang, limit: 20 }).catch(e => { console.error('[universalSearch] wikipedia error:', e); return []; }));
+  if (sources.includes('unsplash')) tasks.push(searchUnsplash(query, apiFilters).catch(e => { console.error('[universalSearch] unsplash error:', e); return []; }));
+  if (sources.includes('openlibrary')) tasks.push(searchOpenLibrary(query, apiFilters).catch(e => { console.error('[universalSearch] openlibrary error:', e); return []; }));
+  if (sources.includes('wikimedia')) tasks.push(searchWikimedia(query, apiFilters).catch(e => { console.error('[universalSearch] wikimedia error:', e); return []; }));
 
   try {
     const settled = await Promise.allSettled(tasks);
     const newResults = settled.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+
+    // Log per-source result counts
+    settled.forEach((r, i) => {
+      const count = r.status === 'fulfilled' ? r.value.length : 0;
+      console.log(`[universalSearch] ${sources[i]}: ${count} results`);
+    });
+
+    const noResultSources = sources.filter((_, i) => {
+      const r = settled[i];
+      return r.status === 'fulfilled' && r.value.length === 0;
+    });
+    if (noResultSources.length > 0 && newResults.length > 0) {
+      showWarning(`> WARNING: NO RESULTS FROM: ${noResultSources.map(s => s.toUpperCase()).join(', ')}`);
+    } else {
+      hideWarning();
+    }
+
     allResults = page === 1 ? newResults : [...allResults, ...newResults];
     hideSearchStatus();
     displayResults(allResults);
@@ -537,6 +556,10 @@ function renderFavorites() {
 // --- Error display ---
 function showError(msg) { errorMsg.textContent = msg; errorMsg.style.display = 'block'; }
 function hideError() { errorMsg.style.display = 'none'; }
+
+// --- Warning display ---
+function showWarning(msg) { warningMsg.textContent = msg; warningMsg.style.display = 'block'; }
+function hideWarning() { warningMsg.style.display = 'none'; }
 
 // --- Helpers ---
 function escapeHtml(str) {
